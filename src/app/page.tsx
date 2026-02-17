@@ -3,10 +3,10 @@
 import { useState, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useCopilotReadable, useCopilotAction } from "@copilotkit/react-core";
-import { MessageSquare, Plane, Hotel, Star, MapPin, DollarSign, Check, X, Clock } from "lucide-react";
+import { MessageSquare, Plane, Hotel, Star, MapPin, DollarSign, Check, X, Clock, UtensilsCrossed } from "lucide-react";
 import { TripPanel } from "@/components/TripPanel";
-import { DESTINATIONS, SAMPLE_TRIPS, SAMPLE_BUCKET_LIST, generateFlights, generateHotels, uid } from "@/lib/data";
-import type { Trip, BucketListItem, Booking, LatLng, Destination, Flight, Hotel as HotelType } from "@/lib/types";
+import { DESTINATIONS, SAMPLE_TRIPS, SAMPLE_BUCKET_LIST, uid } from "@/lib/data";
+import type { Trip, BucketListItem, Booking, LatLng, Destination, Flight, Hotel as HotelType, Restaurant } from "@/lib/types";
 
 /* Leaflet must be client-only — no SSR */
 const WorldMap = dynamic(() => import("@/components/WorldMap"), { ssr: false });
@@ -181,14 +181,32 @@ export default function App() {
   useCopilotAction({
     name: "searchFlights",
     description:
-      "Search for flights between two cities. Returns realistic flight options with prices, airlines, durations, and stops. Use when the user asks about flights, airfare, or how to get somewhere.",
+      "Search for flights between two cities. YOU must provide real flight data based on your knowledge — use actual airlines that fly this route, realistic prices, real flight durations, and accurate departure/arrival times. Return 4-6 options sorted by price. Use when the user asks about flights, airfare, or how to get somewhere.",
     parameters: [
       { name: "from", type: "string", description: "Departure city", required: true },
       { name: "to", type: "string", description: "Arrival city", required: true },
       { name: "date", type: "string", description: "Travel date (YYYY-MM-DD)", required: true },
+      { name: "resultsJson", type: "string", description: 'JSON array of real flights. Each: {"airline":"Delta","from":"NYC","to":"Tokyo","departTime":"14:30","arriveTime":"17:45+1","duration":"14h 15m","stops":0,"price":890,"class":"economy"}. Use REAL airlines that fly this route, realistic prices for the season, and accurate flight times.', required: true },
     ],
-    handler: async (args: { from: string; to: string; date: string }) => {
-      const flights = generateFlights(args.from, args.to, args.date);
+    handler: async (args: { from: string; to: string; date: string; resultsJson: string }) => {
+      let flights: Flight[] = [];
+      try {
+        const raw = JSON.parse(args.resultsJson);
+        flights = raw.map((f: Record<string, unknown>, i: number) => ({
+          id: `fl-${i}`,
+          airline: f.airline,
+          from: f.from || args.from,
+          to: f.to || args.to,
+          departTime: f.departTime,
+          arriveTime: f.arriveTime,
+          duration: f.duration,
+          stops: f.stops ?? 0,
+          price: f.price,
+          class: f.class || "economy",
+        }));
+      } catch {
+        return { error: true, message: "Failed to parse flight data" };
+      }
       return { flights, from: args.from, to: args.to, date: args.date };
     },
     render: ({ status, result }) => {
@@ -249,12 +267,27 @@ export default function App() {
   useCopilotAction({
     name: "searchHotels",
     description:
-      "Search for hotels in a city. Returns hotel options with ratings, prices per night, stars, and amenities. Use when the user asks about hotels, accommodation, or where to stay.",
+      "Search for hotels in a city. YOU must provide real hotel data — use actual hotel names that exist in that city, real ratings from review sites, realistic prices for the area, and real amenities. Return 4-6 options. Use when the user asks about hotels, accommodation, or where to stay.",
     parameters: [
       { name: "location", type: "string", description: "City to search hotels in", required: true },
+      { name: "resultsJson", type: "string", description: 'JSON array of real hotels. Each: {"name":"Park Hyatt Tokyo","location":"Shinjuku","rating":4.8,"stars":5,"pricePerNight":450,"amenities":["Pool","Spa","Gym","Restaurant","Bar"]}. Use REAL hotel names that exist in this city, accurate star ratings, realistic prices per night in USD, and actual amenities they offer.', required: true },
     ],
-    handler: async (args: { location: string }) => {
-      const hotels = generateHotels(args.location);
+    handler: async (args: { location: string; resultsJson: string }) => {
+      let hotels: HotelType[] = [];
+      try {
+        const raw = JSON.parse(args.resultsJson);
+        hotels = raw.map((h: Record<string, unknown>, i: number) => ({
+          id: `ht-${i}`,
+          name: h.name,
+          location: (h.location as string) || args.location,
+          rating: h.rating,
+          stars: h.stars,
+          pricePerNight: h.pricePerNight,
+          amenities: h.amenities || [],
+        }));
+      } catch {
+        return { error: true, message: "Failed to parse hotel data" };
+      }
       return { hotels, location: args.location };
     },
     render: ({ status, result }) => {
@@ -316,7 +349,93 @@ export default function App() {
     },
   });
 
-  /* ── 4. Add to Bucket List ──────────────────────────────── */
+  /* ── 4. Search Restaurants ────────────────────────────────── */
+
+  useCopilotAction({
+    name: "searchRestaurants",
+    description:
+      "Search for restaurants in a city. YOU must provide real restaurant data — use actual restaurant names that exist, real cuisine types, accurate ratings, and realistic price levels. Return 4-6 options. Use when the user asks about restaurants, food, where to eat, or dining.",
+    parameters: [
+      { name: "location", type: "string", description: "City to search restaurants in", required: true },
+      { name: "cuisine", type: "string", description: "Cuisine type filter (optional, e.g. 'sushi', 'italian')", required: false },
+      { name: "resultsJson", type: "string", description: 'JSON array of real restaurants. Each: {"name":"Sukiyabashi Jiro","cuisine":"Sushi","location":"Ginza, Tokyo","rating":4.9,"priceLevel":"$$$$","description":"Legendary 3-Michelin-star sushi counter","mustTry":"Omakase tasting menu"}. Use REAL restaurant names, accurate ratings, and honest descriptions.', required: true },
+    ],
+    handler: async (args: { location: string; cuisine?: string; resultsJson: string }) => {
+      let restaurants: Restaurant[] = [];
+      try {
+        const raw = JSON.parse(args.resultsJson);
+        restaurants = raw.map((r: Record<string, unknown>, i: number) => ({
+          id: `rest-${i}`,
+          name: r.name,
+          cuisine: r.cuisine,
+          location: (r.location as string) || args.location,
+          rating: r.rating,
+          priceLevel: r.priceLevel || "$$",
+          description: r.description,
+          mustTry: r.mustTry,
+        }));
+      } catch {
+        return { error: true, message: "Failed to parse restaurant data" };
+      }
+      return { restaurants, location: args.location };
+    },
+    render: ({ status, result }) => {
+      if (status === "inProgress")
+        return (
+          <RenderCard>
+            <div className="flex items-center gap-2">
+              <UtensilsCrossed className="h-4 w-4 animate-pulse text-orange-500" />
+              <span className="text-sm text-gray-600">Finding restaurants...</span>
+            </div>
+          </RenderCard>
+        );
+
+      if (result?.error)
+        return <RenderCard variant="error">{result.message}</RenderCard>;
+      if (!result?.restaurants)
+        return <RenderCard>No restaurants found.</RenderCard>;
+
+      const restaurants: Restaurant[] = result.restaurants;
+      return (
+        <RenderCard>
+          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-orange-600">
+            🍽️ Restaurants in {result.location}
+          </p>
+          <div className="space-y-2">
+            {restaurants.slice(0, 6).map((r: Restaurant) => (
+              <div
+                key={r.id}
+                className="rounded-lg border border-gray-100 p-2.5 hover:border-orange-200 transition-colors"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-semibold text-gray-900">{r.name}</p>
+                      <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[10px] font-bold text-orange-600">
+                        {r.cuisine}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-[11px] text-gray-500">{r.description}</p>
+                    {r.mustTry && (
+                      <p className="mt-0.5 text-[11px] text-orange-600 italic">
+                        Must try: {r.mustTry}
+                      </p>
+                    )}
+                  </div>
+                  <div className="ml-2 text-right shrink-0">
+                    <p className="text-xs font-bold text-gray-900">⭐ {r.rating}</p>
+                    <p className="text-[11px] font-semibold text-gray-500">{r.priceLevel}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </RenderCard>
+      );
+    },
+  });
+
+  /* ── 5. Add to Bucket List ──────────────────────────────── */
 
   useCopilotAction({
     name: "addToBucketList",

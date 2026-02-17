@@ -80,7 +80,19 @@ export interface Hotel {
   image?: string;
 }
 
-/** A booking (mock) */
+/** Restaurant search result */
+export interface Restaurant {
+  id: string;
+  name: string;
+  cuisine: string;
+  location: string;
+  rating: number;
+  priceLevel: "$" | "$$" | "$$$" | "$$$$";
+  description: string;
+  mustTry?: string;
+}
+
+/** A booking */
 export interface Booking {
   id: string;
   type: "flight" | "hotel";
