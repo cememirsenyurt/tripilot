@@ -33,8 +33,10 @@ export default function WorldMap({
   /* Initialize map */
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
+    let cancelled = false;
 
     import("leaflet").then((L) => {
+      if (cancelled || mapRef.current) return;
       const map = L.map(containerRef.current!, {
         center: [25, 10],
         zoom: 2.5,
@@ -60,6 +62,7 @@ export default function WorldMap({
     });
 
     return () => {
+      cancelled = true;
       mapRef.current?.remove();
       mapRef.current = null;
     };

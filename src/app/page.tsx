@@ -138,7 +138,20 @@ export default function App() {
         status: "planned",
       };
 
-      setTrips((prev) => [trip, ...prev]);
+      setTrips((prev) => {
+        const existing = prev.findIndex(
+          (t) =>
+            t.destination.toLowerCase() === trip.destination.toLowerCase() &&
+            t.startDate === trip.startDate &&
+            t.endDate === trip.endDate
+        );
+        if (existing >= 0) {
+          const updated = [...prev];
+          updated[existing] = trip;
+          return updated;
+        }
+        return [trip, ...prev];
+      });
       setSelectedTrip(trip);
       setFlyTo({ lat: args.lat, lng: args.lng });
       setActiveTab("trips");
@@ -467,7 +480,12 @@ export default function App() {
         addedAt: new Date().toISOString().split("T")[0],
         priority: (args.priority as BucketListItem["priority"]) || "someday",
       };
-      setBucketList((prev) => [item, ...prev]);
+      setBucketList((prev) => {
+        const exists = prev.some(
+          (b) => b.destination.toLowerCase() === item.destination.toLowerCase() && b.country.toLowerCase() === item.country.toLowerCase()
+        );
+        return exists ? prev : [item, ...prev];
+      });
       setFlyTo({ lat: args.lat, lng: args.lng });
       setActiveTab("bucket");
       return { ok: true, destination: args.destination };
