@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useCopilotReadable, useCopilotAction } from "@copilotkit/react-core";
-import { MessageSquare, Plane, Hotel, Star, MapPin, DollarSign, Check, X, Clock, UtensilsCrossed } from "lucide-react";
+import { MessageSquare, Plane, Hotel, Star, MapPin, DollarSign, Check, Clock, UtensilsCrossed } from "lucide-react";
 import { TripPanel } from "@/components/TripPanel";
 import { CheckoutModal } from "@/components/CheckoutModal";
 import { DESTINATIONS, SAMPLE_TRIPS, SAMPLE_BUCKET_LIST, uid } from "@/lib/data";
@@ -633,7 +633,7 @@ export default function App() {
     },
   });
 
-  /* ── 6. Create Visual Card ──────────────────────────────── */
+  /* ── 7. Create Visual Card ──────────────────────────────── */
 
   useCopilotAction({
     name: "createTripCard",

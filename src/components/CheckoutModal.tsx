@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { X, CreditCard, Lock, Check } from "lucide-react";
-import type { Booking } from "@/lib/types";
 
 interface CheckoutItem {
   type: "flight" | "hotel";

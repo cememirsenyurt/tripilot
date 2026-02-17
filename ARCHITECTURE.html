@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tripilot — Architecture</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d26;
+    --surface-hover: #22263a;
+    --border: #2a2e3d;
+    --text: #e4e6ef;
+    --text-muted: #8a8fa3;
+    --accent: #6366f1;
+    --accent-glow: rgba(99,102,241,0.15);
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --pink: #ec4899;
+    --orange: #f97316;
+    --cyan: #06b6d4;
+    --red: #ef4444;
+    --radius: 14px;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 3rem 2rem 5rem; }
+
+  /* Header */
+  .hero { text-align: center; padding: 4rem 0 3rem; }
+  .hero h1 {
+    font-size: 2.8rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--pink));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.02em;
+  }
+  .hero p { color: var(--text-muted); margin-top: 0.5rem; font-size: 1.05rem; }
+  .badge-row { display: flex; gap: 0.5rem; justify-content: center; margin-top: 1.2rem; flex-wrap: wrap; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 0.35rem 0.75rem; border-radius: 99px;
+    font-size: 0.75rem; font-weight: 600; color: var(--text-muted);
+  }
+  .badge .dot { width: 7px; height: 7px; border-radius: 50%; }
+
+  /* Sections */
+  section { margin-top: 3.5rem; }
+  h2 {
+    font-size: 1.5rem; font-weight: 700; margin-bottom: 1.2rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  h2 .icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 8px; font-size: 1rem;
+  }
+  h3 { font-size: 1.05rem; font-weight: 600; margin: 1.2rem 0 0.6rem; color: var(--text); }
+  p, li { color: var(--text-muted); font-size: 0.92rem; }
+  p { margin-bottom: 0.8rem; }
+  ul { padding-left: 1.3rem; margin-bottom: 1rem; }
+  li { margin-bottom: 0.35rem; }
+  strong { color: var(--text); font-weight: 600; }
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 0.15rem 0.4rem; border-radius: 5px; font-size: 0.82rem;
+    color: var(--accent);
+  }
+
+  /* Cards */
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.3rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .card:hover { border-color: var(--accent); box-shadow: 0 0 20px var(--accent-glow); }
+  .card h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.4rem; }
+  .card p { font-size: 0.85rem; margin: 0; }
+
+  /* Diagram */
+  .diagram {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 2rem; margin: 1.5rem 0;
+    overflow-x: auto;
+  }
+  .diagram pre {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem; line-height: 1.8; color: var(--text-muted);
+    white-space: pre; margin: 0;
+  }
+  .diagram .hl { color: var(--accent); font-weight: 600; }
+  .diagram .hlg { color: var(--green); font-weight: 600; }
+  .diagram .hla { color: var(--amber); font-weight: 600; }
+  .diagram .hlp { color: var(--pink); font-weight: 600; }
+  .diagram .hlc { color: var(--cyan); font-weight: 600; }
+  .diagram .hlr { color: var(--red); font-weight: 500; }
+  .diagram .dim { color: #555; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+  th, td {
+    text-align: left; padding: 0.65rem 0.85rem;
+    border-bottom: 1px solid var(--border); font-size: 0.85rem;
+  }
+  th { color: var(--text); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  td { color: var(--text-muted); }
+  td code { font-size: 0.78rem; }
+
+  /* Flow */
+  .flow {
+    display: flex; align-items: center; gap: 0.5rem;
+    flex-wrap: wrap; margin: 1rem 0;
+  }
+  .flow-step {
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 0.5rem 1rem; border-radius: 10px;
+    font-size: 0.82rem; font-weight: 600; color: var(--text);
+    white-space: nowrap;
+  }
+  .flow-arrow { color: var(--accent); font-size: 1.2rem; font-weight: 700; }
+
+  /* Decision */
+  .decision {
+    background: var(--surface); border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1.2rem 1.5rem; margin: 1.2rem 0;
+  }
+  .decision.green { border-left-color: var(--green); }
+  .decision.amber { border-left-color: var(--amber); }
+  .decision.pink { border-left-color: var(--pink); }
+  .decision.orange { border-left-color: var(--orange); }
+  .decision h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.3rem; color: var(--text); }
+  .decision p { font-size: 0.85rem; margin: 0; }
+
+  /* Stat row */
+  .stat-row {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem; margin: 1.5rem 0;
+  }
+  .stat {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1rem 1.2rem; text-align: center;
+  }
+  .stat .num { font-size: 1.8rem; font-weight: 800; }
+  .stat .lbl { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+  /* Footer */
+  .footer {
+    text-align: center; margin-top: 4rem; padding-top: 2rem;
+    border-top: 1px solid var(--border);
+  }
+  .footer p { font-size: 0.8rem; color: #555; }
+
+  /* Responsive */
+  @media (max-width: 700px) {
+    .container { padding: 2rem 1rem; }
+    .hero h1 { font-size: 2rem; }
+    .card-grid { grid-template-columns: 1fr; }
+    .stat-row { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1>Tripilot Architecture</h1>
+    <p>System design, data flow, and engineering decisions</p>
+    <div class="badge-row">
+      <span class="badge"><span class="dot" style="background:var(--accent)"></span>Next.js 15</span>
+      <span class="badge"><span class="dot" style="background:var(--green)"></span>CopilotKit Cloud</span>
+      <span class="badge"><span class="dot" style="background:var(--amber)"></span>Leaflet</span>
+      <span class="badge"><span class="dot" style="background:var(--pink)"></span>TypeScript</span>
+      <span class="badge"><span class="dot" style="background:var(--cyan)"></span>Tailwind CSS 4</span>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stat-row">
+    <div class="stat"><div class="num" style="color:var(--accent)">8</div><div class="lbl">Source Files</div></div>
+    <div class="stat"><div class="num" style="color:var(--green)">7</div><div class="lbl">AI Actions</div></div>
+    <div class="stat"><div class="num" style="color:var(--amber)">4</div><div class="lbl">Readables</div></div>
+    <div class="stat"><div class="num" style="color:var(--pink)">0</div><div class="lbl">Backend Routes</div></div>
+    <div class="stat"><div class="num" style="color:var(--cyan)">0</div><div class="lbl">External APIs</div></div>
+  </div>
+
+  <!-- System Overview -->
+  <section>
+    <h2><span class="icon" style="background:var(--accent-glow);color:var(--accent)">&#9729;</span> System Overview</h2>
+    <p>Tripilot is a <strong>zero-backend</strong> AI travel planner. All intelligence runs through <strong>CopilotKit Cloud</strong> — a single API key replaces the need for a custom server, LLM provider, or API routes. The architecture has exactly three layers.</p>
+
+    <div class="diagram">
+<pre>
+<span class="dim">┌─────────────────────────────────────────────────────────────────────┐</span>
+<span class="dim">│</span>                        <span class="hl">BROWSER (Client Only)</span>                        <span class="dim">│</span>
+<span class="dim">│</span>                                                                     <span class="dim">│</span>
+<span class="dim">│</span>  <span class="hlp">┌─ page.tsx ───────────────────────────────────────────────────┐</span>  <span class="dim">│</span>
+<span class="dim">│</span>  <span class="hlp">│</span>  <span class="hlg">useCopilotReadable</span> ×4  →  Shares state with AI            <span class="hlp">│</span>  <span class="dim">│</span>
+<span class="dim">│</span>  <span class="hlp">│</span>  <span class="hla">useCopilotAction</span>   ×7  →  AI-callable tools + render()   <span class="hlp">│</span>  <span class="dim">│</span>
+<span class="dim">│</span>  <span class="hlp">│</span>  <span class="hlc">useState</span>            ×9  →  trips, bucket, bookings...    <span class="hlp">│</span>  <span class="dim">│</span>
+<span class="dim">│</span>  <span class="hlp">└──────────────────────────────────────────────────────────────┘</span>  <span class="dim">│</span>
+<span class="dim">│</span>           │ props              │ props             │ props           <span class="dim">│</span>
+<span class="dim">│</span>           ▼                    ▼                   ▼                 <span class="dim">│</span>
+<span class="dim">│</span>   <span class="hlg">┌─ WorldMap ──┐</span>   <span class="hla">┌─ TripPanel ──┐</span>   <span class="hlp">┌─ CheckoutModal ─┐</span>   <span class="dim">│</span>
+<span class="dim">│</span>   <span class="hlg">│ Leaflet     │</span>   <span class="hla">│ Trips/Bucket │</span>   <span class="hlp">│ Review/Pay/Done │</span>   <span class="dim">│</span>
+<span class="dim">│</span>   <span class="hlg">│ Markers     │</span>   <span class="hla">│ Bookings     │</span>   <span class="hlp">│ Human-in-loop  │</span>   <span class="dim">│</span>
+<span class="dim">│</span>   <span class="hlg">│ Routes      │</span>   <span class="hla">│ Tabbed UI    │</span>   <span class="hlp">│ 3-step flow    │</span>   <span class="dim">│</span>
+<span class="dim">│</span>   <span class="hlg">└─────────────┘</span>   <span class="hla">└──────────────┘</span>   <span class="hlp">└─────────────────┘</span>   <span class="dim">│</span>
+<span class="dim">│</span>                                                                     <span class="dim">│</span>
+<span class="dim">└────────────────────────────┬────────────────────────────────────────┘</span>
+                             │ <span class="hlr">publicApiKey</span>
+                             ▼
+<span class="dim">┌─────────────────────────────────────────────────────────────────────┐</span>
+<span class="dim">│</span>                    <span class="hl">COPILOTKIT CLOUD</span>                                 <span class="dim">│</span>
+<span class="dim">│</span>                                                                     <span class="dim">│</span>
+<span class="dim">│</span>     Manages LLM calls (GPT-4o) • Tool orchestration               <span class="dim">│</span>
+<span class="dim">│</span>     Resolves action parameters • Streams generative UI             <span class="dim">│</span>
+<span class="dim">│</span>     No self-hosted runtime needed                                 <span class="dim">│</span>
+<span class="dim">│</span>                                                                     <span class="dim">│</span>
+<span class="dim">└─────────────────────────────────────────────────────────────────────┘</span>
+</pre>
+    </div>
+  </section>
+
+  <!-- File Map -->
+  <section>
+    <h2><span class="icon" style="background:rgba(236,72,153,0.15);color:var(--pink)">&#128194;</span> File Map</h2>
+    <p>8 files. Each has exactly one responsibility. No file exceeds 800 lines.</p>
+    <table>
+      <thead>
+        <tr><th>File</th><th>Role</th><th>Key Concept</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>page.tsx</code></td><td>Orchestrator</td><td>All CopilotKit hooks + state live here. Single source of truth.</td></tr>
+        <tr><td><code>providers.tsx</code></td><td>AI Config</td><td>CopilotKit Cloud provider + system instructions for the AI persona.</td></tr>
+        <tr><td><code>layout.tsx</code></td><td>Shell</td><td>Root layout — font, metadata, Leaflet CSS CDN, wraps in Providers.</td></tr>
+        <tr><td><code>globals.css</code></td><td>Styles</td><td>Tailwind import + CopilotKit badge override + scrollbar styles.</td></tr>
+        <tr><td><code>WorldMap.tsx</code></td><td>Map Renderer</td><td>Leaflet map with dynamic import. Pins, routes, fly-to animation.</td></tr>
+        <tr><td><code>TripPanel.tsx</code></td><td>Side Panel</td><td>Tabbed list UI — trips, bucket list, bookings. Pure props-in/UI-out.</td></tr>
+        <tr><td><code>CheckoutModal.tsx</code></td><td>Checkout Flow</td><td>3-step modal: review → processing → confirmed. Human-in-the-loop.</td></tr>
+        <tr><td><code>types.ts</code></td><td>Type Defs</td><td>9 interfaces: LatLng, Destination, Trip, ItineraryDay, BucketListItem, Flight, Hotel, Restaurant, Booking.</td></tr>
+        <tr><td><code>data.ts</code></td><td>Seed Data</td><td>15 destinations, 1 sample trip, 3 bucket list items, uid() helper.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- CopilotKit Integration -->
+  <section>
+    <h2><span class="icon" style="background:rgba(34,197,94,0.15);color:var(--green)">&#129302;</span> CopilotKit Integration</h2>
+    <p>The AI integration follows a <strong>declarative, hooks-based</strong> pattern. The app tells CopilotKit what it knows and what it can do. CopilotKit handles the rest — LLM routing, parameter extraction, tool calling, and streaming.</p>
+
+    <h3>Readables — What the AI Sees</h3>
+    <p>Four <code>useCopilotReadable</code> calls share live client state with the LLM:</p>
+    <table>
+      <thead><tr><th>Readable</th><th>Data Shape</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Trips</td><td><code>Trip[]</code></td><td>AI references existing itineraries to avoid duplicates and suggest modifications</td></tr>
+        <tr><td>Bucket List</td><td><code>BucketListItem[]</code></td><td>AI knows what's already saved, can build trips from bucket list items</td></tr>
+        <tr><td>Bookings</td><td><code>Booking[]</code></td><td>AI tracks confirmed bookings to prevent re-booking</td></tr>
+        <tr><td>Destinations</td><td><code>Destination[]</code></td><td>AI uses curated pins as suggestion seeds with accurate coordinates</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Actions — What the AI Can Do</h3>
+    <p>Seven <code>useCopilotAction</code> hooks. Each has a <code>handler</code> (business logic) and a <code>render</code> (generative UI). The handler returns data, the render function receives the result and displays a React component <strong>directly in the chat</strong>.</p>
+
+    <div class="card-grid">
+      <div class="card">
+        <h4>planTrip</h4>
+        <p>Creates day-by-day itinerary with real GPS coords. Parses AI-generated JSON, updates trips state, flies map to destination, renders trip summary card.</p>
+      </div>
+      <div class="card">
+        <h4>searchFlights</h4>
+        <p>AI provides real airline data via <code>resultsJson</code>. Renders flight comparison cards with airline badges, stops, duration, and pricing.</p>
+      </div>
+      <div class="card">
+        <h4>searchHotels</h4>
+        <p>AI provides real hotel data. Renders hotel cards with star ratings, amenity tags, and per-night pricing.</p>
+      </div>
+      <div class="card">
+        <h4>searchRestaurants</h4>
+        <p>AI provides real restaurant data. Renders cards with cuisine tags, must-try dishes, ratings, and price levels.</p>
+      </div>
+      <div class="card">
+        <h4>addToBucketList</h4>
+        <p>Pins destination on map with coordinates. Deduplicates by destination+country. Updates bucket list panel.</p>
+      </div>
+      <div class="card">
+        <h4>bookTrip</h4>
+        <p>Human-in-the-loop booking. Queues items, renders "Proceed to Checkout" button. Opens modal for payment. Prevents duplicate bookings via key tracking.</p>
+      </div>
+      <div class="card">
+        <h4>createTripCard</h4>
+        <p>Flexible visual cards — comparisons, budget breakdowns, travel tips. AI provides structured JSON, render creates a styled grid.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Data Flow -->
+  <section>
+    <h2><span class="icon" style="background:rgba(245,158,11,0.15);color:var(--amber)">&#8644;</span> Data Flow</h2>
+
+    <h3>Trip Planning Flow</h3>
+    <div class="flow">
+      <span class="flow-step">User: "Plan 5 days in Tokyo"</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">CopilotKit Cloud (GPT-4o)</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Calls planTrip action</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">handler() parses JSON</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">setTrips()</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Map + Panel update</span>
+    </div>
+
+    <h3>Booking Flow (Human-in-the-Loop)</h3>
+    <div class="flow">
+      <span class="flow-step">AI calls bookTrip</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">handler() queues item</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">render() shows button</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">User clicks "Checkout"</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">CheckoutModal opens</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">User pays</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Booking confirmed</span>
+    </div>
+
+    <h3>State Architecture</h3>
+    <div class="diagram">
+<pre>
+<span class="dim">                      page.tsx (orchestrator)</span>
+<span class="dim">         ┌─────────────────────────────────────────────┐</span>
+         │  <span class="hl">trips</span>: Trip[]           (AI planTrip)       │
+         │  <span class="hlg">bucketList</span>: BucketListItem[] (AI addTo...)  │
+         │  <span class="hla">bookings</span>: Booking[]      (checkout flow)    │
+         │  <span class="hlp">checkoutItems</span>: Item[]   (booking queue)     │
+         │  <span class="hlc">confirmedIds</span>: Set       (dedup tracker)     │
+         │  <span class="hlr">flyTo</span>: LatLng | null    (map animation)     │
+         │  <span class="hl">selectedTrip</span>: Trip | null  (map focus)      │
+         │  <span class="hlg">activeTab</span>: string       (panel navigation)  │
+         │  <span class="hla">showCheckout</span>: boolean   (modal toggle)      │
+<span class="dim">         └─────────────────────────────────────────────┘</span>
+                  │            │              │
+                  ▼            ▼              ▼
+           <span class="hlg">WorldMap</span>     <span class="hla">TripPanel</span>     <span class="hlp">CheckoutModal</span>
+          (Leaflet)    (tabs/lists)   (payment flow)
+</pre>
+    </div>
+  </section>
+
+  <!-- Design Decisions -->
+  <section>
+    <h2><span class="icon" style="background:rgba(6,182,212,0.15);color:var(--cyan)">&#9889;</span> Design Decisions</h2>
+
+    <div class="decision green">
+      <h4>CopilotKit Cloud over Self-Hosted Runtime</h4>
+      <p>A self-hosted CopilotKit runtime requires deploying an API route, managing an LLM provider key, and handling token streaming. CopilotKit Cloud replaces all of that with a single <code>publicApiKey</code> prop. Zero backend. For a 60-minute demo, this eliminates an entire infrastructure layer while demonstrating the same SDK capabilities.</p>
+    </div>
+
+    <div class="decision amber">
+      <h4>AI-as-Search-Engine (No External APIs)</h4>
+      <p>Instead of integrating Amadeus, Booking.com, or Google Places APIs (each requiring OAuth, rate limits, and API keys), the actions accept a <code>resultsJson</code> parameter that the LLM fills with real-world data from its training knowledge. GPT-4o knows real hotel names, airline routes, restaurant ratings, and approximate prices. The handler parses, the render displays. This produces <strong>conversational, contextual</strong> results that feel more natural than raw API responses — and requires zero external dependencies.</p>
+    </div>
+
+    <div class="decision pink">
+      <h4>Orchestrator Pattern (Single-File State)</h4>
+      <p>All 9 state variables and all 7 CopilotKit hooks live in <code>page.tsx</code>. This is intentional: CopilotKit actions need to call state setters, and those setters need to be in scope. Rather than lifting state to a context and passing down through providers (adding indirection), the orchestrator pattern keeps the relationship between AI actions and state mutations <strong>explicit and traceable</strong>. Components receive props, nothing more.</p>
+    </div>
+
+    <div class="decision orange">
+      <h4>Dynamic Import for Leaflet (SSR Safety)</h4>
+      <p>Leaflet accesses <code>window</code> and <code>document</code> at import time, which crashes Next.js SSR. The fix: <code>next/dynamic</code> with <code>ssr: false</code>, plus a <code>cancelled</code> flag in the <code>useEffect</code> cleanup to handle React Strict Mode's double-mount behavior. This prevents the "Map container is already initialized" error without disabling strict mode.</p>
+    </div>
+
+    <div class="decision">
+      <h4>Deduplication at the State Boundary</h4>
+      <p>The AI can call the same action multiple times (retry, re-plan, re-add). Instead of trusting the AI to not duplicate, deduplication lives in the <code>setState</code> callbacks: trips match on destination+dates, bucket list items match on destination+country, bookings track confirmed keys in a <code>Set</code>. The UI always shows clean data regardless of AI behavior.</p>
+    </div>
+
+    <div class="decision green">
+      <h4>Human-in-the-Loop Booking via Generative UI</h4>
+      <p>The <code>bookTrip</code> action's <code>render</code> function returns a React component with a "Proceed to Checkout" button. Clicking it sets <code>showCheckout=true</code>, opening a modal <strong>outside</strong> the chat. This is CopilotKit's generative UI bridging AI output to app-level UI — the AI proposes, the human confirms, and the app handles the transaction. After payment, the button state updates to "Paid & Confirmed" via reactive key tracking.</p>
+    </div>
+  </section>
+
+  <!-- CopilotKit Concepts -->
+  <section>
+    <h2><span class="icon" style="background:var(--accent-glow);color:var(--accent)">&#128218;</span> CopilotKit SDK Usage</h2>
+
+    <table>
+      <thead><tr><th>SDK Feature</th><th>Hook/Component</th><th>How Used in Tripilot</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Shared Context</td>
+          <td><code>useCopilotReadable</code></td>
+          <td>4 calls sharing trips, bucket list, bookings, and destinations with a natural-language description for each</td>
+        </tr>
+        <tr>
+          <td>Tool Use</td>
+          <td><code>useCopilotAction</code> (handler)</td>
+          <td>7 handlers that parse AI parameters, update React state, and return structured results</td>
+        </tr>
+        <tr>
+          <td>Generative UI</td>
+          <td><code>useCopilotAction</code> (render)</td>
+          <td>7 render functions returning React components — flight cards, hotel listings, checkout buttons, trip summaries</td>
+        </tr>
+        <tr>
+          <td>Human-in-the-Loop</td>
+          <td>render() + app state</td>
+          <td>bookTrip render includes a button that opens CheckoutModal. AI proposes, user decides.</td>
+        </tr>
+        <tr>
+          <td>Cloud Deployment</td>
+          <td><code>CopilotKit</code> provider</td>
+          <td>Single <code>publicApiKey</code> prop — zero backend, no runtime config, no LLM provider setup</td>
+        </tr>
+        <tr>
+          <td>System Instructions</td>
+          <td><code>CopilotSidebar</code> instructions</td>
+          <td>Detailed persona prompt defining the AI as a travel concierge, with explicit tool-use guidance per action</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Module Dependency -->
+  <section>
+    <h2><span class="icon" style="background:rgba(239,68,68,0.15);color:var(--red)">&#128279;</span> Module Dependencies</h2>
+    <p>The dependency graph is <strong>acyclic and shallow</strong>. No component imports another component. All cross-cutting happens through props from the orchestrator.</p>
+    <div class="diagram">
+<pre>
+  <span class="hl">layout.tsx</span>
+      └─ <span class="hlg">providers.tsx</span>        <span class="dim">(CopilotKit wrapper)</span>
+           └─ <span class="hla">page.tsx</span>          <span class="dim">(orchestrator — all hooks + state)</span>
+                ├─ <span class="hlc">WorldMap.tsx</span>   <span class="dim">(via dynamic import)</span>
+                ├─ <span class="hlp">TripPanel.tsx</span>  <span class="dim">(pure props)</span>
+                └─ <span class="hlr">CheckoutModal.tsx</span> <span class="dim">(pure props)</span>
+
+  <span class="dim">lib/</span>
+    <span class="hla">types.ts</span>  ← imported by page, WorldMap, TripPanel, CheckoutModal, data
+    <span class="hlg">data.ts</span>   ← imported by page only
+</pre>
+    </div>
+  </section>
+
+  <!-- Principles -->
+  <section>
+    <h2><span class="icon" style="background:rgba(99,102,241,0.15);color:var(--accent)">&#9878;</span> Engineering Principles</h2>
+    <div class="card-grid">
+      <div class="card">
+        <h4>Single Responsibility</h4>
+        <p>Each file has one job. Types define shapes. Data provides seeds. The orchestrator manages state. Components render UI. No file does two things.</p>
+      </div>
+      <div class="card">
+        <h4>Explicit Over Implicit</h4>
+        <p>State setters are called directly in action handlers — no Redux, no Zustand, no context. The code reads linearly: "when AI calls planTrip, setTrips runs."</p>
+      </div>
+      <div class="card">
+        <h4>Composition Over Inheritance</h4>
+        <p>RenderCard is a shared wrapper for all generative UI. Actions compose it with different children and variants. No class hierarchy.</p>
+      </div>
+      <div class="card">
+        <h4>Defensive Boundaries</h4>
+        <p>Every JSON.parse in a handler is wrapped in try/catch. Every render function handles inProgress, error, and success states. AI-generated data is never trusted blindly.</p>
+      </div>
+      <div class="card">
+        <h4>Progressive Disclosure</h4>
+        <p>The UI starts with a map and a hint. The sidebar opens on click. Trips expand on click. Checkout is a modal. Complexity is revealed when the user asks for it.</p>
+      </div>
+      <div class="card">
+        <h4>Zero Backend</h4>
+        <p>No API routes. No database. No server functions. The entire app runs client-side with CopilotKit Cloud handling AI. Deployable as a static site.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer">
+    <p>Tripilot — Built with CopilotKit Cloud &bull; Architecture document generated for CopilotKit Applied AI Engineer evaluation</p>
+  </div>
+
+</div>
+</body>
+</html>
