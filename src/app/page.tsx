@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useCopilotReadable, useCopilotAction } from "@copilotkit/react-core";
 import { MessageSquare, Plane, Hotel, Star, MapPin, DollarSign, Check, X, Clock, UtensilsCrossed } from "lucide-react";
 import { TripPanel } from "@/components/TripPanel";
+import { CheckoutModal } from "@/components/CheckoutModal";
 import { DESTINATIONS, SAMPLE_TRIPS, SAMPLE_BUCKET_LIST, uid } from "@/lib/data";
 import type { Trip, BucketListItem, Booking, LatLng, Destination, Flight, Hotel as HotelType, Restaurant } from "@/lib/types";
 
@@ -487,19 +488,33 @@ export default function App() {
     },
   });
 
-  /* ── 5. Book Trip (Human-in-the-Loop) ───────────────────── */
+  /* ── 6. Book Trip (Human-in-the-Loop → Checkout Modal) ──── */
 
-  const [pendingBooking, setPendingBooking] = useState<{
-    type: "flight" | "hotel";
-    itemName: string;
-    price: number;
-    details: string;
-  } | null>(null);
+  const [checkoutItems, setCheckoutItems] = useState<
+    { type: "flight" | "hotel"; itemName: string; price: number; details: string }[]
+  >([]);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [confirmedBookingIds, setConfirmedBookingIds] = useState<Set<string>>(new Set());
+
+  const handleCheckoutComplete = useCallback(
+    (items: { type: "flight" | "hotel"; itemName: string; price: number; details: string }[]) => {
+      const newBookings: Booking[] = items.map((item) => ({
+        id: uid(),
+        ...item,
+        status: "confirmed" as const,
+      }));
+      setBookings((prev) => [...newBookings, ...prev]);
+      setCheckoutItems([]);
+      setShowCheckout(false);
+      setActiveTab("bookings");
+    },
+    [],
+  );
 
   useCopilotAction({
     name: "bookTrip",
     description:
-      "Book a flight or hotel. This requires user confirmation before completing (human-in-the-loop). Use when the user wants to book, reserve, or purchase travel.",
+      "Book a flight or hotel. This shows a booking card in the chat with a 'Proceed to Checkout' button. When clicked, a secure mock checkout modal opens with pre-filled card info. After payment, the booking is confirmed and appears in the Bookings tab. Use when the user wants to book, reserve, or purchase. You can call this multiple times to queue up multiple items (e.g. flights AND hotel) — the user pays for all at once in checkout.",
     parameters: [
       { name: "type", type: "string", description: "flight or hotel", required: true },
       { name: "itemName", type: "string", description: "Name of the flight/hotel", required: true },
@@ -512,61 +527,79 @@ export default function App() {
       price: number;
       details: string;
     }) => {
-      setPendingBooking({
+      const bookingKey = `${args.type}-${args.itemName}-${args.price}`;
+      if (confirmedBookingIds.has(bookingKey)) {
+        return { alreadyBooked: true, itemName: args.itemName };
+      }
+
+      const item = {
         type: args.type as "flight" | "hotel",
         itemName: args.itemName,
         price: args.price,
         details: args.details,
+      };
+      setCheckoutItems((prev) => {
+        const exists = prev.some(
+          (p) => p.type === item.type && p.itemName === item.itemName && p.price === item.price
+        );
+        return exists ? prev : [...prev, item];
       });
       return {
-        needsApproval: true,
+        needsCheckout: true,
         type: args.type,
         itemName: args.itemName,
         price: args.price,
+        bookingKey,
       };
     },
     render: ({ status, result }) => {
       if (status === "inProgress")
         return <RenderCard>Preparing booking...</RenderCard>;
 
-      if (result?.needsApproval) {
+      if (result?.alreadyBooked) {
         return (
-          <RenderCard variant="warning">
-            <p className="mb-1 text-xs font-bold uppercase tracking-wider text-amber-600">
-              Confirm Booking
-            </p>
+          <RenderCard>
             <div className="flex items-center gap-2">
-              <span className="text-lg">{result.type === "flight" ? "✈️" : "🏨"}</span>
-              <div>
-                <p className="text-sm font-semibold text-gray-900">{result.itemName}</p>
-                <p className="text-lg font-bold text-indigo-600">${result.price}</p>
+              <Check className="h-4 w-4 text-green-600" />
+              <span className="text-sm font-medium text-gray-900">
+                {result.itemName} — already booked!
+              </span>
+            </div>
+          </RenderCard>
+        );
+      }
+
+      if (result?.needsCheckout) {
+        const isConfirmed = confirmedBookingIds.has(result.bookingKey);
+        return (
+          <RenderCard variant={isConfirmed ? undefined : "warning"}>
+            {isConfirmed ? (
+              <div className="flex items-center gap-2">
+                <Check className="h-4 w-4 text-green-600" />
+                <span className="text-sm font-medium text-green-700">
+                  {result.itemName} — Paid & Confirmed
+                </span>
               </div>
-            </div>
-            <div className="mt-3 flex gap-2">
-              <button
-                onClick={() => {
-                  if (pendingBooking) {
-                    const booking: Booking = {
-                      id: uid(),
-                      ...pendingBooking,
-                      status: "confirmed",
-                    };
-                    setBookings((prev) => [booking, ...prev]);
-                    setPendingBooking(null);
-                    setActiveTab("bookings");
-                  }
-                }}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-green-600 py-2 text-xs font-semibold text-white hover:bg-green-700 transition-colors"
-              >
-                <Check className="h-3.5 w-3.5" /> Confirm & Pay
-              </button>
-              <button
-                onClick={() => setPendingBooking(null)}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-gray-100 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-200 transition-colors"
-              >
-                <X className="h-3.5 w-3.5" /> Cancel
-              </button>
-            </div>
+            ) : (
+              <>
+                <p className="mb-1 text-xs font-bold uppercase tracking-wider text-amber-600">
+                  Ready to Book
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{result.type === "flight" ? "✈️" : "🏨"}</span>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">{result.itemName}</p>
+                    <p className="text-lg font-bold text-indigo-600">${result.price?.toLocaleString()}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowCheckout(true)}
+                  className="mt-3 w-full rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 py-2 text-xs font-semibold text-white hover:from-indigo-700 hover:to-purple-700 transition-all"
+                >
+                  Proceed to Checkout →
+                </button>
+              </>
+            )}
           </RenderCard>
         );
       }
@@ -575,9 +608,7 @@ export default function App() {
         <RenderCard>
           <div className="flex items-center gap-2">
             <Check className="h-4 w-4 text-green-600" />
-            <span className="text-sm font-medium text-gray-900">
-              Booking confirmed!
-            </span>
+            <span className="text-sm font-medium text-gray-900">Booking confirmed!</span>
           </div>
         </RenderCard>
       );
@@ -698,6 +729,21 @@ export default function App() {
           </span>
         </div>
       </div>
+
+      {/* ── Checkout Modal ───────────────────────────────── */}
+      {showCheckout && checkoutItems.length > 0 && (
+        <CheckoutModal
+          items={checkoutItems}
+          onComplete={(items) => {
+            handleCheckoutComplete(items);
+            for (const item of items) {
+              const key = `${item.type}-${item.itemName}-${item.price}`;
+              setConfirmedBookingIds((prev) => new Set([...prev, key]));
+            }
+          }}
+          onClose={() => setShowCheckout(false)}
+        />
+      )}
     </div>
   );
 }
